@@ -6,7 +6,7 @@ if (params.help) {
     idplot: compare similar sequences to a reference
     ================================================
 
-    Output is written to <outdir>/idplot_<reference>.html and can
+    Output is written to <outdir>/idplot.html and can
     be opened with your internet browser.
 
     required
