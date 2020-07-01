@@ -2,6 +2,31 @@
 
 Compare similar sequences to a reference.
 
+Sequences are aligned to the reference using `minimap2` and are assumed to
+be reasonably similar. The generated plots include a multiple sequence
+alignment, aggregated gaps added to the reference by the query sequences,
+and percent ID per query relative to the reference sequence.
+
+See the example plot at: https://brwnj.github.io/idplot/
+
+### Multiple sequence alignment
+
+The reference sequence is fully colored in. Hovering along the reference
+shows the base for a given color. Query sequences are colored at mismatches
+and gaps (gray).
+
+### Gaps
+
+The second row represents gaps added into the reference and is the sum of
+all gaps across the query sequences. Zooming is allowed on both the x and
+y planes to facilitate actually seeing data aside from very large gaps.
+
+### Percent ID (ANI)
+
+Percent ID is calculated across the window (default 1000 bp) with the value
+being plotted at the center point. A 1000 bp window will have 500 bp dead
+spots at the beginning and end of the reference length.
+
 # Setup
 
 Nextflow is used to run the pipeline. Its installation instructions
