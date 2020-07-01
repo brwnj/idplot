@@ -391,9 +391,10 @@ def main(alignments, reference, window, output):
                 mw = list(mismatch_window)
                 pid = max((window - sum(mw)) / window, 0)
                 identities.append(pid)
+            print(len(identities))
             match_library[query] = identities
             trace = dict(
-                x=np.arange(window / 2, len(identities)).tolist(),
+                x=np.arange(window / 2, len(identities) + (window / 2)).tolist(),
                 y=identities,
                 text=query,
                 xaxis="x",
