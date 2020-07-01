@@ -22,11 +22,17 @@ nextflow run brwnj/idplot -latest \
     --fasta 'data/query_seqs/*.fasta'
 ```
 
-This command would work if you cloned this repo and ran `nextflow run`
-from within the cloned repository.
+The reference sequence (`--reference`) should be a fasta with only one
+sequence in it. Query sequences (`--fasta`) may either be single sequence
+files or multi-sequence fasta files and you can specify more than one
+using wildcards ('*').
+
+Example sequences are found in `data/query_sequences`.
 
 Output is written to <outdir>/idplot.html and can
 be opened with your internet browser.
+
+An example report is available at: https://brwnj.github.io/idplot/
 
 ```
 required
