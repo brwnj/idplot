@@ -107,7 +107,7 @@ TEMPLATE = """
         margin: { t: 10, b: 40 },
         height: 600,
         xaxis: { title: "Position", autorange: true, showgrid: false, showlines: false, zeroline: false },
-        yaxis3: { title: "ANI", fixedrange: true, showgrid: true, showticklabels: true, tickvals: [0, .2, .4, .6, .8, 1], zeroline: false, domain: [0, 0.52] },
+        yaxis3: { title: "ANI", fixedrange: true, range: [0,1], showgrid: true, showticklabels: true, tickmode: 'array', tick0: 0, dtick: 0.2, zeroline: true, domain: [0, 0.50] },
         yaxis2: { title: "Gaps", fixedrange: false, showgrid: true, showticklabels: true, domain: [0.55, 0.75] },
         yaxis: { fixedrange: true, showgrid: true, domain: [0.75, 1]},
         hovermode: "closest",
@@ -391,7 +391,7 @@ def main(alignments, reference, window, output):
                 mw = list(mismatch_window)
                 pid = max((window - sum(mw)) / window, 0)
                 identities.append(pid)
-            print(len(identities))
+
             match_library[query] = identities
             trace = dict(
                 x=np.arange(window / 2, len(identities) + (window / 2)).tolist(),
