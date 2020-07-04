@@ -340,6 +340,8 @@ def main(alignments, reference, window, output):
         "G": "",
         "T": "",
         "-": 4,
+        "n": "",
+        "N": ""
     }
 
     traces = list()
@@ -393,6 +395,7 @@ def main(alignments, reference, window, output):
                 identities.append(pid)
 
             match_library[query] = identities
+            # ani plot
             trace = dict(
                 x=np.arange(window / 2, len(identities) + (window / 2)).tolist(),
                 y=identities,
@@ -408,6 +411,7 @@ def main(alignments, reference, window, output):
                 marker={"width": 1, "color": plot_line_color},
             )
             traces.append(trace)
+            # msa plot
             z_values.append(query_msa.tolist())
             y_values.append(query)
             text_values.append([])
