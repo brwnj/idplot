@@ -1,8 +1,11 @@
 FROM continuumio/miniconda3:4.8.2
 
-LABEL version="1.0.0" maintainer="Joe Brown <brwnjm@gmail.com>"
+LABEL version="1.1.2" maintainer="Joe Brown <brwnjm@gmail.com>"
 
-RUN apt-get update && apt-get install -y procps
-RUN conda create -n env -c bioconda minimap2==2.17 python==3.8.3 numpy==1.18.5 click==7.1.2
-RUN echo "source activate env" > ~/.bashrc
-ENV PATH /opt/conda/envs/env/bin:$PATH
+RUN apt-get update && apt-get install -y g++ make procps
+RUN conda create -n main -c bioconda -c conda-forge python==3.8.3 mafft==7.471 hyphy==2.5.15
+RUN echo "source activate main" > ~/.bashrc
+ENV PATH /opt/conda/envs/main/bin:$PATH
+
+COPY ./docker-build.sh .
+RUN bash docker-build.sh
