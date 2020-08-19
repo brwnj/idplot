@@ -51,6 +51,7 @@ Channel
 
 
 process mafft {
+    publishDir path: "${params.outdir}/"
     cpus params.cpus.toInteger()
 
     input:
@@ -64,12 +65,14 @@ process mafft {
     """
     cat ${reference} > mafft_input.fasta
     cat ${query} >> mafft_input.fasta
-    mafft --auto --thread ${task.cpus} --quiet --maxiterate 1000 --globalpair mafft_input.fasta > ${reference.baseName}.msa.fasta
+    mafft --auto --thread ${task.cpus} --op 1.53 --ep 0.123 mafft_input.fasta > ${reference.baseName}.msa.fasta
     """
 }
 
 
 process threeseq {
+    publishDir path: "${params.outdir}/3seq/"
+
     input:
     file(msa) from msa_threeseq_ch
 
@@ -85,6 +88,7 @@ process threeseq {
 
 
 process gard {
+    publishDir path: "${params.outdir}/gard/"
     tag "${msa}"
     cpus params.cpus.toInteger()
 
