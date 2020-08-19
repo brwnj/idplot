@@ -732,9 +732,7 @@ nuc_map = {
     "C": 1,
     "G": 2,
     "T": 3,
-    "-": 4,
-    "n": "",
-    "N": ""
+    "-": 4
 }
 
 traces = list()
@@ -752,7 +750,14 @@ with open(alignments) as fh:
         if reference:
             queries.append(dict(name=name, seq=seq))
         else:
-            reference = dict(name=name, seq=seq, msa=[nuc_map[b] for b in seq])
+            reference = dict(name=name, seq=seq)
+            msa = list()
+            for b in seq:
+                try:
+                    msa.append(nuc_map[b])
+                except KeyError:
+                    msa.append("")
+            reference["msa"] = msa
             alignment_length = len(seq)
 
 for i, query in enumerate(queries):
@@ -767,7 +772,11 @@ for i, query in enumerate(queries):
             query_msa.append("")
         else:
             mismatches.append(1)
-            query_msa.append(nuc_map[qbase])
+            try:
+                query_msa.append(nuc_map[qbase])
+            except KeyError:
+                # handle ambiguous bases
+                query_msa.append("")
 
     assert len(mismatches) == len(reference["seq"])
 
