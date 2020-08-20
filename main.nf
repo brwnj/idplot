@@ -77,12 +77,13 @@ process threeseq {
     file(msa) from msa_threeseq_ch
 
     output:
-    file("${msa.baseName}.3s.rec") into threeseq_report_ch
+    file("${msa.baseName}.3s.csv") into threeseq_report_ch
 
     script:
     """
     echo Y | 3seq -g pvaltable500 500
     echo Y | 3seq -f ${msa} -ptable pvaltable500 -L500 -id ${msa.baseName}
+    mv ${msa.baseName}.3s.rec ${msa.baseName}.3s.csv
     """
 }
 
