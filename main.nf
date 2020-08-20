@@ -26,11 +26,6 @@ if (params.help) {
                  Default: false
     --cpus       Threads for multi-threaded processes.
                  Default: 1
-    --mpi        Breakpoint detection only takes advantage of more than 2
-                 CPUs when MPI is available (Docker, local installs, but
-                 not Singularity).
-                 Default: false
-
     -----------------------------------------------------------------------
     """.stripIndent()
     exit 0
@@ -65,7 +60,7 @@ process mafft {
     """
     cat ${reference} > mafft_input.fasta
     cat ${query} >> mafft_input.fasta
-    mafft --auto --thread ${task.cpus} --op 1.53 --ep 0.123 mafft_input.fasta > ${reference.baseName}.msa.fasta
+    mafft --auto --thread ${task.cpus} --maxiterate 1000 --globalpair mafft_input.fasta > ${reference.baseName}.msa.fasta
     """
 }
 
@@ -103,7 +98,7 @@ process gard {
     params.gard
 
     script:
-    cmd = params.mpi ? "mpirun -np ${task.cpus} --allow-run-as-root --oversubscribe HYPHYMPI" : "hyphy"
+    cmd = params.nompi ? "hyphy" : "mpirun -np ${task.cpus} --allow-run-as-root --oversubscribe HYPHYMPI"
     // rv: None, GDD, Gamma
     """
     $cmd CPU=${task.cpus} gard --type nucleotide --code Universal \
