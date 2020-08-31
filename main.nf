@@ -46,7 +46,7 @@ Channel
 
 
 process mafft {
-    publishDir path: "${params.outdir}/"
+    publishDir path: "${params.outdir}/", mode: "copy"
     cpus params.cpus.toInteger()
 
     input:
@@ -66,7 +66,7 @@ process mafft {
 
 
 process threeseq {
-    publishDir path: "${params.outdir}/3seq/"
+    publishDir path: "${params.outdir}/3seq/", mode: "copy"
 
     input:
     file(msa) from msa_threeseq_ch
@@ -84,7 +84,7 @@ process threeseq {
 
 
 process gard {
-    publishDir path: "${params.outdir}/gard/"
+    publishDir path: "${params.outdir}/gard/", mode: "copy"
     tag "${msa}"
     cpus params.cpus.toInteger()
 
@@ -109,7 +109,7 @@ process gard {
 gard_report_ch = (params.gard ? gard_output_ch : [""])
 
 process idplot {
-    publishDir path: "${params.outdir}/"
+    publishDir path: "${params.outdir}/", mode: "copy"
 
     input:
     file(msa) from msa_report_ch
