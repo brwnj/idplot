@@ -292,7 +292,7 @@ if (!d3) { throw "d3 wasn't included!"};
           .attr("dy", -3)
           .attr("text-anchor", "middle")
           .attr('font-size', '8px')
-          .attr('fill', '#ccc')
+          .attr('fill', '#000')
           .text(function(d) { return Math.round(d*100) / 100; });
     }
 
