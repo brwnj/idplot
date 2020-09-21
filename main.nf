@@ -34,7 +34,7 @@ if (params.help) {
 // required arguments
 params.reference = false
 if( !params.reference ) { exit 1, "--reference is not defined" }
-file reference = file(params.reference)
+reference = file(params.reference)
 if( !reference.exists() ) { exit 1, "Reference [${reference}] does not exist." }
 params.fasta = false
 if( !params.fasta ) { exit 1, "--fasta is not defined" }
