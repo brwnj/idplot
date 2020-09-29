@@ -22,6 +22,9 @@ if (params.help) {
     --window     The sliding window size across the reference genome upon
                  which to calculate similarity.
                  Default: 1000
+    --threeseq   Run 3SEQ recombination detection. If 3Seq fails to find
+                 a breakpoint among any triplet, the track will not be
+                 displayed in the report.
     --gard       Run GARD for breakpoint detection in addition to 3seq.
                  Default: false
     --cpus       Threads for multi-threaded processes.
@@ -72,13 +75,21 @@ process threeseq {
     file(msa) from msa_threeseq_ch
 
     output:
-    file("${msa.baseName}.3s.csv") into threeseq_report_ch
+    file("${msa.baseName}.3s.csv") into threeseq_output_ch
+
+    when:
+    params.threeseq
 
     script:
     """
     echo Y | 3seq -g pvaltable500 500
     echo Y | 3seq -f ${msa} -ptable pvaltable500 -L500 -id ${msa.baseName}
-    mv ${msa.baseName}.3s.rec ${msa.baseName}.3s.csv
+    if [[ -f ${msa.baseName}.3s.rec ]]
+    then
+        mv ${msa.baseName}.3s.rec ${msa.baseName}.3s.csv
+    else
+        touch ${msa.baseName}.3s.csv
+    fi
     """
 }
 
@@ -107,6 +118,7 @@ process gard {
 }
 
 gard_report_ch = (params.gard ? gard_output_ch : [""])
+threeseq_report_ch = (params.threeseq ? threeseq_output_ch : [""])
 
 process idplot {
     publishDir path: "${params.outdir}/", mode: "copy"
