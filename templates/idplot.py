@@ -85,6 +85,17 @@ TEMPLATE = """
         .highlight-select {
             background-color: #ccc;
         }
+
+        .form-control::placeholder {
+            color: #6c757d;
+            opacity: 1;
+            text-overflow: ellipsis;
+        }
+
+        .plot-color {
+            font-weight: 900;
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 
@@ -94,7 +105,7 @@ TEMPLATE = """
                 href="https://github.com/brwnj/idplot">idplot</a></div>
         <div class="col-10 d-flex align-items-center justify-content-end" id="meta-header">
             <div class="dropdown">
-                <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" id="details"
+                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="details"
                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     Run details
                 </button>
@@ -125,6 +136,14 @@ TEMPLATE = """
         <div class="row">
             <div class="col-12">
                 <div class="row pt-2 mb-3" id="grid_plot"></div>
+            </div>
+        </div>
+        <div class="row p-2">
+            <div class="col-12">
+                <h5>Sequences</h5>
+                <div class="text-muted small">Sequence selection is based on plot zoom level</div>
+            </div>
+            <div class="col-12 pt-2 px-4 mb-4" id="sequence-selection">
             </div>
         </div>
     </div>
@@ -448,7 +467,7 @@ TEMPLATE = """
     );
 
     const data = {{data}}
-    const cov_color = 'rgba(108,117,125,0.2)'
+        const cov_color = 'rgba(108,117,125,0.2)'
     const colors = [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b",
         "#e377c2", "#7f7f7f", "#bcbd22", "#17becf", "#7CB5EC", "#434348",
@@ -461,6 +480,11 @@ TEMPLATE = """
         [0.6, "#ff7f0e"], [0.6, "#d62728"], [0.8, "#d62728"], [0.8, "#7f7f7f"], [1, "#7f7f7f"],
     ]
     let grid_traces = []
+
+    \$('.dropdown-menu').on("click.bs.dropdown", (e) => {
+        e.stopPropagation()
+        e.preventDefault()
+    })
 
     const strain_colors = (strain_id) => {
         for (const [i, strain] of Object.keys(data.queries).entries()) {
@@ -478,34 +502,23 @@ TEMPLATE = """
             margin: { t: 10, b: 40, r: 40 },
             height: 550,
             xaxis: { title: "Position", autorange: true, showgrid: false, showlines: false, zeroline: false, rangeslider: {} },
-            yaxis: { title: "", fixedrange: true, showgrid: false, showspikes: false, domain: [0.75, 1] },
-            yaxis2: { title: "ANI", fixedrange: true, range: [0, 1], showgrid: true, showticklabels: true, tickmode: 'array', tick0: 0, dtick: 0.2, zeroline: true, domain: [0, 0.40] },
+            yaxis: { title: "", fixedrange: true, showgrid: false, showspikes: false, domain: [0.65, 1] },
+            yaxis2: { title: "ANI", fixedrange: true, range: [0, 1], showgrid: true, showticklabels: true, tickmode: 'array', tick0: 0, dtick: 0.2, zeroline: true, domain: [0, 0.60] },
             yaxis3: {},
             yaxis4: {},
             hovermode: "closest",
             showlegend: false,
-            grid: { rows: 2, columns: 1, subplots: [['xy'],], pattern: 'independent' },
+            grid: { rows: 2, columns: 1, subplots: [['xy2', 'xy']], pattern: 'independent' },
         }
         if (data.gard) {
+            layout.yaxis2.domain = [0, 0.40]
+            layout.yaxis.domain = [0.75, 1]
             layout.yaxis4 = {
                 title: "GARD", fixedrange: true, range: [-2, 3], showticklabels: false, showgrid: false, zeroline: false, domain: [0.45, 0.70]
             }
             layout.grid.rows += 1
-            layout.grid.subplots.push('xy4')
+            layout.grid.subplots[0].push('xy4')
         }
-        if (data["3seq"]) {
-            layout.yaxis3 = {
-                title: "3seq", fixedrange: true, range: [0, 10 + 1], showticklabels: false, showgrid: false, zeroline: false, domain: [0.45, 0.70]
-            }
-            layout.grid.rows += 1
-            layout.grid.subplots.push('xy3')
-        }
-        if (data["3seq"] & data.gard) {
-            layout.yaxis3.domain = [0.45, 0.60]
-            layout.yaxis4.domain = [0.60, 0.70]
-            layout.height = 650
-        }
-        layout.grid.subplots.push('xy2')
         return layout
     }
 
@@ -560,13 +573,17 @@ TEMPLATE = """
         }
     }
 
-    const get_gard_traces = (breakpoints) => {
+    const get_gard_trace = (breakpoints) => {
+        if (!breakpoints) {
+            return []
+        }
         let x = []
         let y = []
         let text = []
-        for (let breakpoint of breakpoints) {
-            let idx = breakpoint[0]
-            let coords = breakpoint[1].bps[0]
+
+        for (const breakpoint in breakpoints) {
+            let idx = breakpoint
+            let coords = breakpoints[breakpoint].bps[0]
             let start = coords[0]
             let end = coords[1]
             // `range` replacement
@@ -599,15 +616,11 @@ TEMPLATE = """
     }
 
     const build_plots = () => {
-
         let ani_traces = get_ani_traces(data.queries, data.window)
         let msa_trace = get_msa_traces(data.queries, data.reference)
-        let gard_trace = get_gard_traces(data.gard)
-        let threeseq_traces = []
+        let gard_trace = get_gard_trace(data.gard.breakpointData)
         // global var
-        grid_traces = [...ani_traces, ...threeseq_traces]
-        grid_traces.push(msa_trace)
-        grid_traces.push(gard_trace)
+        grid_traces = [msa_trace, gard_trace, ...ani_traces]
 
         let grid_plot = document.getElementById("grid_plot")
         Plotly.react(grid_plot, grid_traces, plot_layout())
@@ -615,6 +628,7 @@ TEMPLATE = """
         grid_plot.removeAllListeners("plotly_doubleclick")
         grid_plot.on("plotly_click", handle_plot_click)
         grid_plot.on("plotly_doubleclick", handle_plot_doubleclick)
+        grid_plot.on("plotly_relayout", draw_sequences)
 
         grid_plot.classList.remove("disabled_div")
     }
@@ -628,10 +642,6 @@ TEMPLATE = """
             treeplot.classList.add("highlight-select");
             // sleep; change the background back to white
             setTimeout(() => { treeplot.classList.remove("highlight-select") }, 800)
-        } else if (click_data.points[0].data.tracktype == '3seq') {
-            let bp = click_data.points[0].text
-            bp = bp.split("<br>")
-            highlight_plot_traces(bp)
         } else {
             let sample_id = click_data.points[0].data.text
             if (sample_id) {
@@ -689,9 +699,8 @@ TEMPLATE = """
         if (tree_data) {
             document.getElementById("dendrograms-row-wrapper").classList.remove("d-none")
             let d = document.getElementById("dendrograms")
-            tree_data.forEach(td => {
-                let idx = td[0]
-                let tree_obj = td[1]
+            for (const idx in tree_data) {
+                let tree_obj = tree_data[idx]
                 let field_id = `\${tree_obj.bps[0][0]}-\${tree_obj.bps[0][1]}`
                 let newick_str = tree_obj.tree
                 d.insertAdjacentHTML("beforeend", `
@@ -700,7 +709,7 @@ TEMPLATE = """
                 </div>
                 `)
                 build_newick(newick_str, `\${field_id}-dendrogram`)
-            })
+            }
         }
     }
 
@@ -712,10 +721,102 @@ TEMPLATE = """
         document.getElementById("meta-container").innerHTML = `<code>\${container}<code>`
     }
 
-    \$(document).ready(function () {
+    const get_selected_range = () => {
+        let p = document.getElementById("grid_plot")
+        let start = p.layout.xaxis.range[0] < 0 ? 0 : Math.round(p.layout.xaxis.range[0])
+        let end = Math.round(p.layout.xaxis.range[1])
+        return [start, end]
+    }
+
+    const get_seq_by_id = (id) => {
+        let [start, end] = get_selected_range()
+        let seq
+        if (id == data.reference.name) {
+            seq = data.reference.seq.substring(start, end)
+        } else {
+            seq = data.queries[id].seq.substring(start, end)
+        }
+        return seq
+    }
+
+    const init_sequences = () => {
+        let seq_sel = document.getElementById("sequence-selection")
+        seq_sel.insertAdjacentHTML('beforeend', `
+            <label for="\${data.reference.name}-seq">\${data.reference.name} (Reference)</label>
+            <div class="input-group input-group-sm pb-2">
+                <input class="form-control" type="text" placeholder="\${get_seq_by_id(data.reference.name)}" id="\${data.reference.name}-seq" readonly="">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="button" id="\${data.reference.name}-copy-btn" title="Copy selected region" data-toggle="tooltip" onclick="copy('\${data.reference.name}')">Copy</button>
+                    <button class="btn btn-primary blast-btn" type="button" id="\${data.reference.name}-blast-btn" title="Send selected region to BLAST" data-toggle="tooltip" onclick="blast('\${data.reference.name}')">BLAST</button>
+                </div>
+            </div>
+            `
+        )
+        for (const query in data.queries) {
+            seq_sel.insertAdjacentHTML('beforeend', `
+                <label for="\${query}-seq"><span class="plot-color" style="color:\${strain_colors(query)}">|</span> \${query}</label>
+                <div class="input-group input-group-sm pb-2">
+                    <input class="form-control" type="text" placeholder="\${get_seq_by_id(query)}" id="\${query}-seq" readonly="">
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="button" id="\${query}-copy-btn" title="Copy selected region" data-toggle="tooltip" onclick="copy('\${query}')">Copy</button>
+                        <button class="btn btn-primary blast-btn" type="button" id="\${query}-blast-btn" title="Send selected region to BLAST" data-toggle="tooltip" onclick="blast('\${query}')">BLAST</button>
+                    </div>
+                </div>
+                `
+            )
+        }
+    }
+
+    const toggle_blast_button = () => {
+        // disable for anything longer than 8k...
+        let [start, end] = get_selected_range()
+        if (end - start > 8000) {
+            document.querySelectorAll('.blast-btn').forEach(elem => {
+                elem.disabled = true
+                \$(`#\${elem.id}`).attr("data-original-title", "Selection too long (>8kb)").tooltip("update")
+            })
+        } else {
+            document.querySelectorAll('.blast-btn').forEach(elem => {
+                elem.disabled = false
+                \$(`#\${elem.id}`).attr("data-original-title", "Send selected region to BLAST").tooltip("update")
+            })
+        }
+    }
+
+    const draw_sequences = () => {
+        // reference
+        document.getElementById(`\${data.reference.name}-seq`).placeholder = get_seq_by_id(data.reference.name)
+        // queries
+        for (const query in data.queries) {
+            document.getElementById(`\${query}-seq`).placeholder = get_seq_by_id(query)
+        }
+        toggle_blast_button()
+    }
+
+    const copy = (id) => {
+        var \$temp = \$("<input>")
+        \$("body").append(\$temp)
+
+        \$temp.val(get_seq_by_id(id)).select()
+        document.execCommand("copy")
+        \$temp.remove()
+
+        \$(`#\${id}-copy-btn`).attr("title", "Copied!").tooltip("_fixTitle").tooltip("show").attr("title", "Copy selected region").tooltip("_fixTitle")
+    }
+
+    const blast = (id) => {
+        let seq = get_seq_by_id(id)
+        let url = new URL(`https://blast.ncbi.nlm.nih.gov/Blast.cgi?QUERY=\${seq}&DATABASE=nt&PROGRAM=blastn&CMD=put`)
+        window.open(url)
+    }
+
+    jQuery(document).ready(function () {
         update_details(data.reference.name, data.reference.seq.length, data.meta.cli, data.meta.dir, data.meta.container)
         build_plots(data)
-        build_dendrograms(data.gard)
+        build_dendrograms(data.gard.breakpointData)
+        init_sequences()
+        \$('[data-toggle="tooltip"]').tooltip()
+        toggle_blast_button()
     })
 
 </script>
@@ -813,7 +914,7 @@ def process_queries(refseq, query_seqs):
             pid = max((window - sum(mw)) / window, 0)
             identities.append(pid)
 
-        query_vals[query["name"]] = dict(identity=identities, z=query_msa)
+        query_vals[query["name"]] = dict(identity=identities, z=query_msa, seq=query["seq"])
     return query_vals
 
 
@@ -821,53 +922,29 @@ def parse_gard(filepath):
     if not filepath:
         return False
 
-    points = list()
+    # points = list()
     with open(filepath) as fh:
         jdata = json.load(fh)
-        for pos, support in jdata["breakpointData"].items():
-            points.append([int(pos), support])
-    points.sort(key=lambda x: x[0])
-    return points
-
-
-def parse_rec_file(filepath):
-    # P_ACCNUM,Q_ACCNUM,C_ACCNUM,m,n,k,p,HS?,log(p),DS(p),DS(p),min_rec_length,breakpoints
-    # MG772933,AY278741,MN996532,1467,384,28,0.000000000001,1,-11.8299,0.00000,1.775174e-10,4332,13266-13328 & 20225-20227
-    # AY278741,DQ022305,KF367457,1010,180,36,0.000000000000,1,-20.0824,0.00000,9.926901e-19,172,28462-28471 & 28907-28957
-    # MN996532,DQ022305,MG772933,1400,680,293,0.000000000000,1,-121.2153,0.00000,7.309035e-120,5610,11763-11789 & 20612-20636
-    triplets = defaultdict(list)
-    with open(filepath) as fh:
-        for line in fh:
-            if line.startswith("P_ACCNUM"):
-                continue
-            # 0-3 p, q, and c; 10 p-value; 12 breakpoints
-            toks = line.strip().split(",")
-            triplet = "<br>".join(toks[0:3])
-            for bp in toks[12:]:
-                # [['13266', '13328'], ['20225', '20227']]
-                triplets[triplet].append([i.split("-") for i in bp.split(" & ")])
-    return triplets
-
+    #     for pos, support in jdata["breakpointData"].items():
+    #         points.append([int(pos), support])
+    # points.sort(key=lambda x: x[0])
+        return jdata
 
 alignments = "$msa"
 json_input = "$json" if "$json" != "input.2" else False
-rec_input = "$rec"
 window = $params.window
 output = "idplot.html"
 nextflow_command = "$workflow.commandLine"
 launch_directory = "$workflow.launchDir"
 workflow_container = "$workflow.container"
 
-
 reference, queries = parse_alignments(alignments)
 queries = process_queries(reference["seq"], queries)
 gard_results = parse_gard(json_input)
-threeseq_results = parse_rec_file(rec_input)
 data = {
         "reference": reference,
         "queries": queries,
         "gard": gard_results,
-        "3seq": threeseq_results,
         "window": window,
         "meta": {
             "cli": nextflow_command,
