@@ -5,8 +5,7 @@ from collections import defaultdict, deque
 from itertools import groupby, islice
 
 
-TEMPLATE = """
-<!DOCTYPE html>
+TEMPLATE = """<!DOCTYPE html>
 <html>
 
 <head>
@@ -40,12 +39,17 @@ TEMPLATE = """
 
         .chart-row {
             overflow-x: auto;
-            height: 220px;
+            height: 235px;
             max-width: 100%;
         }
 
         .tree-view {
             width: 430px;
+        }
+
+        .tree-view > svg {
+            cursor: pointer;
+            pointer-events: all;
         }
 
         .tree-container {
@@ -77,13 +81,16 @@ TEMPLATE = """
             font-weight: 400;
         }
 
+        .btn-vsm {
+            vertical-align: inherit !important;
+            padding: 0rem 0rem !important;
+            font-size: inherit !important;
+            line-height: 1 !important;
+        }
+
         .code {
             color: #6b6b6b;
             word-break: break-word;
-        }
-
-        .highlight-select {
-            background-color: #ccc;
         }
 
         .form-control::placeholder {
@@ -96,6 +103,7 @@ TEMPLATE = """
             font-weight: 900;
             font-size: 1.2rem;
         }
+
     </style>
 </head>
 
@@ -105,8 +113,8 @@ TEMPLATE = """
                 href="https://github.com/brwnj/idplot">idplot</a></div>
         <div class="col-10 d-flex align-items-center justify-content-end" id="meta-header">
             <div class="dropdown">
-                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="details"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="details" data-toggle="dropdown"
+                    aria-haspopup="true" aria-expanded="false">
                     Run details
                 </button>
                 <div class="dropdown-menu dropdown-menu-right dropdown-details" aria-labelledby="details">
@@ -125,24 +133,46 @@ TEMPLATE = """
         </div>
     </div>
     <div class="container-fluid w-90">
-        <div class="row p-2 d-none" id="dendrograms-row-wrapper">
-            <div class="col-12">
-                <h5>Breakpoints</h5>
+        <div class="row p-2 bg-light d-none" id="dendrograms-row-wrapper">
+            <div class="col-4">
+                <h5>GARD refinements</h5>
             </div>
-            <div class="row chart-row" id="dendrograms-row">
-                <div class="col-12 tree-container" id="dendrograms"></div>
+            <div class="col-8">
+                <h5>GARD breakpoint trees (iteration <span id="iteration-number">00</span>)</h5>
+            </div>
+            <div class="col-4 pl-0" id="gard-plot"></div>
+            <div class="col-8">
+                <div class="row chart-row ml-0" id="dendrograms-row">
+                    <div class="col-9 tree-container px-0" id="dendrograms"></div>
+                </div>
             </div>
         </div>
         <div class="row">
             <div class="col-12">
-                <div class="row pt-2 mb-3" id="grid_plot"></div>
+                <div class="row pt-2 mb-3" id="grid-plot"></div>
             </div>
         </div>
-        <div class="row p-2">
-            <div class="col-12">
+        <div class="row p-2 d-flex">
+            <div class="col-6">
                 <h5>Sequences</h5>
+            </div>
+            <div class="col-6 d-flex align-items-center justify-content-end">
+                <button class="btn btn-primary" id="export-button" type="button" data-toggle="tooltip"
+                    title="Export all sequences as .fasta file">Export all</button>
+            </div>
+            <div class="col-6">
                 <div class="text-muted small">Sequence selection is based on plot zoom level</div>
             </div>
+            <div class="col-6 d-flex py-2 align-items-center justify-content-end">
+                <div class="form-check form-check-inline mr-0">
+                    <input class="form-check-input" type="checkbox" value="" id="remove-gaps">
+                    <label class="form-check-label" for="remove-gaps" title="Remove gaps (-) from sequence exports"
+                        data-toggle="tooltip">
+                        Remove gaps
+                    </label>
+                </div>
+            </div>
+
             <div class="col-12 pt-2 px-4 mb-4" id="sequence-selection">
             </div>
         </div>
@@ -480,8 +510,10 @@ TEMPLATE = """
         [0.6, "#ff7f0e"], [0.6, "#d62728"], [0.8, "#d62728"], [0.8, "#7f7f7f"], [1, "#7f7f7f"],
     ]
     let grid_traces = []
+    let selected_trees = false
+    let selected_index
 
-    \$('.dropdown-menu').on("click.bs.dropdown", (e) => {
+    jQuery('.dropdown-menu').on("click.bs.dropdown", (e) => {
         e.stopPropagation()
         e.preventDefault()
     })
@@ -496,7 +528,6 @@ TEMPLATE = """
     }
 
     const plot_layout = () => {
-        let subplots = []
         let layout = {
             title: "",
             margin: { t: 10, b: 40, r: 40 },
@@ -509,17 +540,23 @@ TEMPLATE = """
             hovermode: "closest",
             showlegend: false,
             grid: { rows: 2, columns: 1, subplots: [['xy2', 'xy']], pattern: 'independent' },
+            shapes: [],
         }
         if (data.gard) {
-            layout.yaxis2.domain = [0, 0.40]
-            layout.yaxis.domain = [0.75, 1]
+            layout.yaxis2.domain = [0, 0.45]
+            layout.yaxis.domain = [0.60, 1]
             layout.yaxis4 = {
-                title: "GARD", fixedrange: true, range: [-2, 3], showticklabels: false, showgrid: false, zeroline: false, domain: [0.45, 0.70]
+                title: "GARD", fixedrange: true, range: [-2, 3], showticklabels: false, showgrid: false, zeroline: false, domain: [0.45, 0.60]
             }
             layout.grid.rows += 1
             layout.grid.subplots[0].push('xy4')
         }
         return layout
+    }
+
+    const plot_config = {
+        displaylogo: false,
+        modeBarButtonsToRemove: ["select2d", "lasso2d"],
     }
 
     const get_ani_traces = (q, window) => {
@@ -557,13 +594,15 @@ TEMPLATE = """
         }
         z.push(reference.msa)
         y.push(reference.name)
-        text.push(reference.seq)
+        text.push(Array.from(reference.seq))
 
         return {
             x: Array.from({ length: reference.seq.length }, (v, k) => k),
             y: y,
             z: z,
-            hovertext: text,
+            text: text,
+            hoverinfo: "text+x+y",
+            hoverongaps: false,
             xaxis: "x",
             yaxis: "y",
             type: "heatmap",
@@ -573,19 +612,16 @@ TEMPLATE = """
         }
     }
 
-    const get_gard_trace = (breakpoints) => {
-        if (!breakpoints) {
-            return []
-        }
+    const get_gard_trace = () => {
         let x = []
         let y = []
         let text = []
-
-        for (const breakpoint in breakpoints) {
-            let idx = breakpoint
-            let coords = breakpoints[breakpoint].bps[0]
-            let start = coords[0]
-            let end = coords[1]
+        if (!(selected_trees)) {
+            return []
+        }
+        for (const [idx, arr] of selected_trees.entries()) {
+            let start = arr[0]
+            let end = arr[1]
             // `range` replacement
             let a = Array.from({ length: end - start + 1 }, (v, k) => k + start)
             for (let i of a) {
@@ -604,7 +640,7 @@ TEMPLATE = """
             xaxis: "x",
             yaxis: "y4",
             hoverinfo: "text",
-            type: "scattergl",
+            type: "scatter",
             name: "breakpoints",
             tracktype: "breakpoints",
             connectgaps: false,
@@ -615,33 +651,86 @@ TEMPLATE = """
         }
     }
 
-    const build_plots = () => {
+    const build_grid_plots = () => {
         let ani_traces = get_ani_traces(data.queries, data.window)
         let msa_trace = get_msa_traces(data.queries, data.reference)
-        let gard_trace = get_gard_trace(data.gard.breakpointData)
+        let gard_trace = get_gard_trace()
         // global var
         grid_traces = [msa_trace, gard_trace, ...ani_traces]
 
-        let grid_plot = document.getElementById("grid_plot")
-        Plotly.react(grid_plot, grid_traces, plot_layout())
+        // let layout = plot_layout()
+        let grid_plot = document.getElementById("grid-plot")
+        let p_obj = Plotly.react(grid_plot, grid_traces, plot_layout(), plot_config)
         grid_plot.removeAllListeners("plotly_click")
         grid_plot.removeAllListeners("plotly_doubleclick")
         grid_plot.on("plotly_click", handle_plot_click)
         grid_plot.on("plotly_doubleclick", handle_plot_doubleclick)
         grid_plot.on("plotly_relayout", draw_sequences)
+        grid_plot.on("plotly_afterplot", () => {
+            let yticks = jQuery("#grid-plot .yaxislayer-above > .ytick > text")
+            for (const [key, value] of Object.entries(yticks)) {
+                tick = jQuery(value)
+                if (Object.keys(data.queries).includes(tick.text())) {
+                    tick.css({
+                        fill: strain_colors(tick.text()),
+                        "font-weight": 600,
+                    })
+                }
+            }
+        })
 
         grid_plot.classList.remove("disabled_div")
+        return p_obj
+    }
+
+    const update_grid_plot = () => {
+        grid_traces[1] = get_gard_trace()
+        let grid_plot = document.getElementById("grid-plot")
+        Plotly.react(grid_plot, grid_traces, plot_layout(), plot_config)
+    }
+
+    const handle_dendrogram_click = (start, end, scroll=true) => {
+        let treeplot = document.getElementById(`\${start}-\${end}-dendrogram`)
+        if (treeplot == null) {
+            return
+        }
+        jQuery(".tree-view").removeClass("border-primary bg-white")
+        jQuery(".tree-view").addClass("border-light bg-light")
+
+        treeplot.classList.add("border-primary")
+        treeplot.classList.add("bg-white")
+        treeplot.classList.remove("border-light")
+
+        if (scroll) {
+            treeplot.scrollIntoView({ behavior: "smooth", block: "start", inline: "center" })
+        }
+
+        // highlight this region in grid-plot
+        let shape = [{
+            type: "rect",
+            x0: start,
+            y0: 0.45,
+            x1: end,
+            y1: 0.6,
+            xref: "x",
+            yref: "paper",
+            line: {
+                width: 1,
+                color: "#007bff",
+            }
+        }]
+        Plotly.relayout("grid-plot", { shapes: shape })
     }
 
     const handle_plot_click = (click_data) => {
         if (click_data.points[0].data.tracktype == 'breakpoints') {
             let bp = click_data.points[0].text
-            let treeplot = document.getElementById(`\${bp}-dendrogram`)
-            treeplot.scrollIntoView({ behavior: "smooth", block: "start", inline: "center" })
-            // change the background color
-            treeplot.classList.add("highlight-select");
-            // sleep; change the background back to white
-            setTimeout(() => { treeplot.classList.remove("highlight-select") }, 800)
+
+            let coords = bp.split("-")
+            let start = coords[0]
+            let end = coords[1]
+            // selected_coords = [start, end]
+            handle_dendrogram_click(start, end)
         } else {
             let sample_id = click_data.points[0].data.text
             if (sample_id) {
@@ -651,7 +740,9 @@ TEMPLATE = """
     }
 
     const handle_plot_doubleclick = () => {
-        build_plots()
+        jQuery(".tree-view").removeClass("border-primary bg-white")
+        jQuery(".tree-view").addClass("border-light bg-light")
+        build_grid_plots()
     }
 
     const highlight_plot_traces = (sample_id) => {
@@ -661,7 +752,7 @@ TEMPLATE = """
         let highlight_color;
         for (var i = 0; i < grid_traces.length; i++) {
             // let trace = grid_traces[i]
-            let trace = \$.extend(true, {}, grid_traces[i])
+            let trace = jQuery.extend(true, {}, grid_traces[i])
             // limit to significant sample traces
             if (trace.name == "significant") {
                 if (sample_id.includes(trace.text)) {
@@ -673,7 +764,7 @@ TEMPLATE = """
             }
             s_traces.push(trace)
         }
-        Plotly.react("grid_plot", s_traces, plot_layout())
+        Plotly.react("grid-plot", s_traces, plot_layout(), plot_config)
     }
 
     const build_newick = (str, div_id) => {
@@ -693,24 +784,42 @@ TEMPLATE = """
             width: 330,
             height: 180
         })
+        d.addEventListener("mouseover", (e) => {
+            let coords = e.target.parentElement.id.split("-")
+            handle_dendrogram_click(coords[0], coords[1], scroll=false)
+        })
     }
 
-    const build_dendrograms = (tree_data) => {
-        if (tree_data) {
+    const zoom_grid_plot = (id) => {
+        let coords = id.split('-')
+        let start = coords[0]
+        let end = coords[1]
+
+        let layout = plot_layout()
+        layout.xaxis.range = [start, end]
+        layout.xaxis.autorange = false
+        Plotly.relayout("grid-plot", layout)
+    }
+
+    const build_dendrograms = () => {
+        return new Promise((resolve, reject) => {
             document.getElementById("dendrograms-row-wrapper").classList.remove("d-none")
             let d = document.getElementById("dendrograms")
-            for (const idx in tree_data) {
-                let tree_obj = tree_data[idx]
-                let field_id = `\${tree_obj.bps[0][0]}-\${tree_obj.bps[0][1]}`
-                let newick_str = tree_obj.tree
+            d.innerHTML = ""
+            for (const arr of selected_trees) {
+                let start = arr[0]
+                let end = arr[1]
+                let newick = arr[2]
+                let field_id = `\${start}-\${end}`
                 d.insertAdjacentHTML("beforeend", `
-                <div class="tree-view" id="\${field_id}-dendrogram">
-                    <div class="small pl-3">Region: \${field_id}</div>
-                </div>
+                    <div class="tree-view border border-light rounded pt-1 pl-1" id="\${field_id}-dendrogram">
+                        <div class="small">Region: <button type="button" class="btn btn-vsm btn-link tree-zoom" id="\${field_id}-zoom" onClick="zoom_grid_plot(this.id)">\${field_id}</div>
+                    </div>
                 `)
-                build_newick(newick_str, `\${field_id}-dendrogram`)
+                build_newick(newick, `\${field_id}-dendrogram`)
             }
-        }
+            resolve()
+        })
     }
 
     const update_details = (name, length, cli, dir, container) => {
@@ -722,7 +831,7 @@ TEMPLATE = """
     }
 
     const get_selected_range = () => {
-        let p = document.getElementById("grid_plot")
+        let p = document.getElementById("grid-plot")
         let start = p.layout.xaxis.range[0] < 0 ? 0 : Math.round(p.layout.xaxis.range[0])
         let end = Math.round(p.layout.xaxis.range[1])
         return [start, end]
@@ -736,7 +845,105 @@ TEMPLATE = """
         } else {
             seq = data.queries[id].seq.substring(start, end)
         }
+        if (jQuery("#remove-gaps").is(":checked")) {
+            seq = seq.replaceAll("-", "")
+        }
         return seq
+    }
+
+    const build_gard_plot = () => {
+        let x = []
+        let y = []
+        let selected_x
+        let selected_y
+        cum_daic = 0
+        for (const [imp_id, bp_obj] of Object.entries(data.gard.improvements)) {
+            cum_daic += bp_obj.deltaAICc
+            x.push(parseInt(imp_id))
+            y.push(cum_daic)
+            selected_x = parseInt(imp_id)
+            selected_y = cum_daic
+        }
+
+        let layout = {
+            margin: { t: 0, b: 30, r: 20 },
+            height: 235,
+            paper_bgcolor: '#f8f9fa',
+            xaxis: {
+                title: "Iteration",
+                rangemode: "tozero",
+            },
+            yaxis: {
+                title: "Cumulative ΔAIC",
+            },
+            annotations: [{
+                text: "Selected: " + selected_x,
+                x: selected_x,
+                y: selected_y,
+                showarrow: true,
+                arrowhead: 6,
+                ax: 0,
+                ay: 40,
+                font: {size: 14},
+                bgcolor: 'rgba(255, 255, 255, 0.8)',
+            }]
+        }
+
+        trace = [{
+            x: x,
+            y: y,
+            mode: "lines+markers",
+            marker: { size: 10, color: "rgb(211,211,211,0.5)", line: { color: 'rgb(40,40,40)', width: 1 } },
+            line: {
+                color: "black",
+                width: 1
+            }
+        }]
+
+        let p = document.getElementById("gard-plot")
+        let p_obj = Plotly.react(p, trace, layout, { displayModeBar: false })
+        p.removeAllListeners("plotly_click")
+        p.on("plotly_click", handle_iteration_click)
+        return p_obj
+    }
+
+    const get_trees = (idx) => {
+        let start = 0
+        let trees = []
+        for (let end of data.gard.improvements[idx].breakpoints) {
+            end = end[0]
+            trees.push([start, end, data.trees[`\${start}_\${end}`].replace(";", "")])
+            start = end + 1
+        }
+        trees.push([start, data.reference.seq.length, data.trees[`\${start}_\${data.reference.seq.length}`]])
+        return trees
+    }
+
+    const update_tree_data = () => {
+        build_dendrograms().then(() => {
+            handle_dendrogram_click(0, data.gard.improvements[selected_index].breakpoints[0][0])
+        })
+        update_grid_plot()
+    }
+
+    const handle_iteration_click = (click_data) => {
+        document.getElementById("iteration-number").innerHTML = click_data.points[0].x
+        selected_index = click_data.points[0].x
+        annotations = [{
+            text: 'Selected: ' + click_data.points[0].x,
+            x: click_data.points[0].x,
+            y: parseFloat(click_data.points[0].y.toPrecision(4)),
+            showarrow: true,
+            arrowhead: 6,
+            ax: 0,
+            ay: 40,
+            font: {size: 14},
+            bgcolor: 'rgba(255, 255, 255, 0.8)',
+        }]
+        Plotly.relayout("gard-plot", { annotations: annotations })
+
+        selected_trees = get_trees(click_data.points[0].x)
+        update_tree_data()
     }
 
     const init_sequences = () => {
@@ -744,7 +951,7 @@ TEMPLATE = """
         seq_sel.insertAdjacentHTML('beforeend', `
             <label for="\${data.reference.name}-seq">\${data.reference.name} (Reference)</label>
             <div class="input-group input-group-sm pb-2">
-                <input class="form-control" type="text" placeholder="\${get_seq_by_id(data.reference.name)}" id="\${data.reference.name}-seq" readonly="">
+                <input class="form-control text-monospace" type="text" placeholder="\${get_seq_by_id(data.reference.name)}" id="\${data.reference.name}-seq" readonly="">
                 <div class="input-group-append">
                     <button class="btn btn-primary" type="button" id="\${data.reference.name}-copy-btn" title="Copy selected region" data-toggle="tooltip" onclick="copy('\${data.reference.name}')">Copy</button>
                     <button class="btn btn-primary blast-btn" type="button" id="\${data.reference.name}-blast-btn" title="Send selected region to BLAST" data-toggle="tooltip" onclick="blast('\${data.reference.name}')">BLAST</button>
@@ -756,7 +963,7 @@ TEMPLATE = """
             seq_sel.insertAdjacentHTML('beforeend', `
                 <label for="\${query}-seq"><span class="plot-color" style="color:\${strain_colors(query)}">|</span> \${query}</label>
                 <div class="input-group input-group-sm pb-2">
-                    <input class="form-control" type="text" placeholder="\${get_seq_by_id(query)}" id="\${query}-seq" readonly="">
+                    <input class="form-control text-monospace" type="text" placeholder="\${get_seq_by_id(query)}" id="\${query}-seq" readonly="">
                     <div class="input-group-append">
                         <button class="btn btn-primary" type="button" id="\${query}-copy-btn" title="Copy selected region" data-toggle="tooltip" onclick="copy('\${query}')">Copy</button>
                         <button class="btn btn-primary blast-btn" type="button" id="\${query}-blast-btn" title="Send selected region to BLAST" data-toggle="tooltip" onclick="blast('\${query}')">BLAST</button>
@@ -773,12 +980,12 @@ TEMPLATE = """
         if (end - start > 8000) {
             document.querySelectorAll('.blast-btn').forEach(elem => {
                 elem.disabled = true
-                \$(`#\${elem.id}`).attr("data-original-title", "Selection too long (>8kb)").tooltip("update")
+                jQuery(`#\${elem.id}`).attr("data-original-title", "Selection too long (>8kb)").tooltip("update")
             })
         } else {
             document.querySelectorAll('.blast-btn').forEach(elem => {
                 elem.disabled = false
-                \$(`#\${elem.id}`).attr("data-original-title", "Send selected region to BLAST").tooltip("update")
+                jQuery(`#\${elem.id}`).attr("data-original-title", "Send selected region to BLAST").tooltip("update")
             })
         }
     }
@@ -810,17 +1017,53 @@ TEMPLATE = """
         window.open(url)
     }
 
-    jQuery(document).ready(function () {
-        update_details(data.reference.name, data.reference.seq.length, data.meta.cli, data.meta.dir, data.meta.container)
-        build_plots(data)
-        build_dendrograms(data.gard.breakpointData)
-        init_sequences()
-        \$('[data-toggle="tooltip"]').tooltip()
-        toggle_blast_button()
+    // https://robkendal.co.uk/blog/2020-04-17-saving-text-to-client-side-file-using-vanilla-js
+    const download_to_file = (content, filename, contentType = 'text/plain') => {
+        const a = document.createElement('a');
+        const file = new Blob([content], { type: contentType });
+
+        a.href = URL.createObjectURL(file);
+        a.download = filename;
+        a.click();
+
+        URL.revokeObjectURL(a.href);
+    };
+
+    jQuery("#export-button").on("click", () => {
+        let fa = [">" + data.reference.name, get_seq_by_id(data.reference.name)]
+        for (const query in data.queries) {
+            fa.push(">" + query)
+            fa.push(get_seq_by_id(query))
+        }
+        let [start, end] = get_selected_range()
+        let filename = `\${data.reference.name}_\${start}_\${end}.fasta`
+        download_to_file(fa.join("\\\\n") + "\\\\n", filename)
     })
 
-</script>
+    jQuery("#remove-gaps").on("change", () => {
+        draw_sequences()
+    })
 
+    jQuery(document).ready(function () {
+        if (data.gard) {
+            document.getElementById("iteration-number").innerHTML = Object.keys(data.gard.improvements).length - 1
+            selected_trees = get_trees(Object.keys(data.gard.improvements).length - 1)
+        }
+        update_details(data.reference.name, data.reference.seq.length, data.meta.cli, data.meta.dir, data.meta.container)
+        build_grid_plots().then(() => {
+            if (data.gard) {
+                build_dendrograms().then(() => {
+                    build_gard_plot().then(() => {
+                        handle_dendrogram_click(0, data.gard.improvements[Object.keys(data.gard.improvements).length - 1].breakpoints[0][0], scroll=false)
+                    })
+                })
+            }
+        })
+        init_sequences()
+        jQuery('[data-toggle="tooltip"]').tooltip()
+        toggle_blast_button()
+    })
+</script>
 </html>
 """
 
@@ -922,16 +1165,31 @@ def parse_gard(filepath):
     if not filepath:
         return False
 
-    # points = list()
     with open(filepath) as fh:
         jdata = json.load(fh)
-    #     for pos, support in jdata["breakpointData"].items():
-    #         points.append([int(pos), support])
-    # points.sort(key=lambda x: x[0])
+        # small amount of bs
+        jdata.pop('analysis', None)
+        # large amount of bs
+        jdata.pop('siteBreakPointSupport', None)
         return jdata
+
+
+def parse_trees(filepaths):
+    if not filepaths:
+        return False
+
+    t = dict()
+    for f in filepaths.split(" "):
+        _, start, end = f.rpartition(".")[0].rsplit("_", 2)
+        with open(f) as fh:
+            newick = fh.readline().strip()
+            t[f"{start}_{end}"] = newick
+    return t
+
 
 alignments = "$msa"
 json_input = "$json" if "$json" != "input.2" else False
+trees = "$trees" if "$trees" != "input.3" else False
 window = $params.window
 output = "idplot.html"
 nextflow_command = "$workflow.commandLine"
@@ -941,10 +1199,12 @@ workflow_container = "$workflow.container"
 reference, queries = parse_alignments(alignments)
 queries = process_queries(reference["seq"], queries)
 gard_results = parse_gard(json_input)
+tree_results = parse_trees(trees)
 data = {
         "reference": reference,
         "queries": queries,
         "gard": gard_results,
+        "trees": tree_results,
         "window": window,
         "meta": {
             "cli": nextflow_command,
