@@ -30,7 +30,6 @@ if (params.help) {
     """.stripIndent()
     exit 0
 }
-
 // required arguments
 params.reference = false
 if( !params.reference ) { exit 1, "--reference is not defined" }
@@ -54,7 +53,7 @@ process mafft {
     file(query) from mafft_ch.collect()
 
     output:
-    file("${reference.baseName}.msa.fasta") into (msa_gard_ch, msa_threeseq_ch, msa_report_ch)
+    file("${reference.baseName}.msa.fasta") into (msa_gard_ch, msa_json_ch, msa_report_ch)
 
     script:
     """
@@ -74,7 +73,7 @@ process gard {
     file(msa) from msa_gard_ch
 
     output:
-    file("${msa.baseName}.json") into gard_output_ch
+    file("${msa.baseName}.json") into (gard_output_ch, gard_output_secondary_ch)
 
     when:
     params.gard
@@ -88,7 +87,39 @@ process gard {
     """
 }
 
-gard_report_ch = (params.gard ? gard_output_ch : [""])
+gard_json_ch = (params.gard ? gard_output_ch : [""])
+gard_report_ch = (params.gard ? gard_output_secondary_ch : [""])
+
+process jsontofasta {
+    input:
+    file(msa) from msa_json_ch
+    file(json) from gard_json_ch
+
+    output:
+    file("*.fa") into selection_ch
+
+    when:
+    params.gard
+
+    script:
+    template "jsontofasta.py"
+}
+
+
+process fasttree {
+    input:
+    file(fasta) from selection_ch.flatten()
+
+    output:
+    file("${fasta.simpleName}.tree") into tree_output_ch
+
+    script:
+    """
+    fasttree -nt -gamma -spr 4 -quiet ${fasta} > ${fasta.simpleName}.tree
+    """
+}
+
+tree_report_ch = (params.gard ? tree_output_ch : [""])
 
 process idplot {
     publishDir path: "${params.outdir}/", mode: "copy"
@@ -96,10 +127,11 @@ process idplot {
     input:
     file(msa) from msa_report_ch
     file(json) from gard_report_ch
+    file(trees) from tree_report_ch.collect()
 
     output:
     file("idplot.html")
 
     script:
-    template 'idplot.py'
+    template "idplot.py"
 }
