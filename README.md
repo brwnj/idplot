@@ -85,16 +85,16 @@ Sequence selection is based on the level of x-axis zoom of the plot. Sequence ga
 
 ## With GARD results
 
-Including `--gard` in your nextflow command generates additional
+Including `--gard` in your nextflow command adds breakpoint detection and updates available data and visualizations in the report.
 
-## Breakpoints track
+### Breakpoints track
 
 ![gardtrack](data/img/gardtrack.png)
 
 Regions identified by GARD as breakpoints are highlighted between the
 MSA and ANI plots. Clicks on the regions will navigate to the respective dendrogram.
 
-## Dendrograms
+### Dendrograms
 
 ![dendrograms](data/img/dendrograms.png)
 
@@ -104,7 +104,7 @@ Hovering over regions highlights the respective region in the GARD breakpoints t
 
 Clicking the region link will zoom the plot to facilitate downloading the sequence content for a given region.
 
-## Refinements
+### Refinements
 
 ![refinements](data/img/refinements.png)
 
