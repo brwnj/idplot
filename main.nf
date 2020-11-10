@@ -21,7 +21,7 @@ if (params.help) {
                  Default: '/.results'
     --window     The sliding window size across the reference genome upon
                  which to calculate similarity.
-                 Default: 1000
+                 Default: 500
     --gard       Run GARD for breakpoint detection in addition to 3seq.
                  Default: false
     --cpus       Threads for multi-threaded processes.
