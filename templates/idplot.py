@@ -874,7 +874,7 @@ TEMPLATE = """<!DOCTYPE html>
                 rangemode: "tozero",
             },
             yaxis: {
-                title: "Cumulative ΔAIC",
+                title: "Cumulative &#x394;AIC",
             },
             annotations: [{
                 text: "Selected: " + selected_x,
