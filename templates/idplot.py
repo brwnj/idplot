@@ -533,7 +533,7 @@ TEMPLATE = """<!DOCTYPE html>
             margin: { t: 10, b: 40, r: 40 },
             height: 550,
             xaxis: { title: "Position", autorange: true, showgrid: false, showlines: false, zeroline: false, rangeslider: {} },
-            yaxis: { title: "", fixedrange: true, showgrid: false, showspikes: false, domain: [0.65, 1] },
+            yaxis: { title: "", fixedrange: true, showgrid: false, showspikes: false, domain: [0.65, 1], automargin: true },
             yaxis2: { title: "ANI", fixedrange: true, range: [0, 1], showgrid: true, showticklabels: true, tickmode: 'array', tick0: 0, dtick: 0.2, zeroline: true, domain: [0, 0.60] },
             yaxis3: {},
             yaxis4: {},
@@ -709,9 +709,9 @@ TEMPLATE = """<!DOCTYPE html>
         let shape = [{
             type: "rect",
             x0: start,
-            y0: 0.45,
+            y0: 0.47,
             x1: end,
-            y1: 0.6,
+            y1: 0.57,
             xref: "x",
             yref: "paper",
             line: {
