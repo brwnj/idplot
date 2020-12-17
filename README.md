@@ -20,7 +20,7 @@ conda install nextflow
 Executing the workflow using nextflow:
 
 ```
-nextflow run brwnj/idplot -latest -profile docker \
+nextflow run brwnj/idplot -latest -with-docker \
     --reference data/MN996532.fasta \
     --fasta 'data/query_seqs/*.fasta'
 ```
@@ -51,11 +51,29 @@ for each breakpoint and build a tree using [FastTree](https://journals.plos.org/
 An example command enabling GARD with 12 MPI processes:
 
 ```
-nextflow run brwnj/idplot -latest -profile docker \
+nextflow run brwnj/idplot -latest -with-docker \
     --reference data/MN996532.fasta \
     --fasta 'data/query_seqs/*.fasta' \
     --gard --cpus 12
 ```
+
+## Including a reference annotation
+
+Publicly available reference sequences, like in NCBI, often have an accompanying annotation
+that can be included within the ANI plot. On NCBI, one can get a GFF from the reference page under Send to:
+
+![ani](data/img/ncbi.png)
+
+```
+nextflow run brwnj/idplot -latest -with-docker \
+    --reference data/MN996532.fasta \
+    --fasta 'data/query_seqs/*.fasta' \
+    --gff MN996532.gff3
+```
+
+Within the report, this renders as:
+
+![gff](data/img/gff.png)
 
 # Interpreting the report
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import gzip
 import json
 from collections import defaultdict, deque
 from itertools import groupby, islice
@@ -14,12 +15,16 @@ TEMPLATE = """<!DOCTYPE html>
     <title>idplot</title>
     <script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
     <script type="text/javascript" src="https://d3js.org/d3.v3.min.js"></script>
-    <script type="text/javascript"
-        src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
     <script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet">
-    <link rel="stylesheet" type="text/css"
-        href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW"
+        crossorigin="anonymous"></script>
+
 
     <style type="text/css">
         .disabled_div {
@@ -47,7 +52,7 @@ TEMPLATE = """<!DOCTYPE html>
             width: 430px;
         }
 
-        .tree-view > svg {
+        .tree-view>svg {
             cursor: pointer;
             pointer-events: all;
         }
@@ -104,6 +109,14 @@ TEMPLATE = """<!DOCTYPE html>
             font-size: 1.2rem;
         }
 
+        .type-select {
+            width: 230px;
+        }
+
+        .btn-group-sm>.btn,
+        .btn-sm {
+            padding: .27rem .5rem !important;
+        }
     </style>
 </head>
 
@@ -112,9 +125,14 @@ TEMPLATE = """<!DOCTYPE html>
         <div class="col-2"><a class="brand text-white text-decoration-none"
                 href="https://github.com/brwnj/idplot">idplot</a></div>
         <div class="col-10 d-flex align-items-center justify-content-end" id="meta-header">
+            <div class="input-group input-group-sm type-select pe-2 d-none" id="annotation-select">
+                <span class="input-group-text">Annotation</span>
+                <select class="form-select" id="annotation-type">
+                </select>
+            </div>
             <div class="dropdown">
-                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="details" data-toggle="dropdown"
-                    aria-haspopup="true" aria-expanded="false">
+                <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="details"
+                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     Run details
                 </button>
                 <div class="dropdown-menu dropdown-menu-right dropdown-details" aria-labelledby="details">
@@ -140,9 +158,9 @@ TEMPLATE = """<!DOCTYPE html>
             <div class="col-8">
                 <h5>GARD breakpoint trees (iteration <span id="iteration-number">00</span>)</h5>
             </div>
-            <div class="col-4 pl-0" id="gard-plot"></div>
+            <div class="col-4 ps-0" id="gard-plot"></div>
             <div class="col-8">
-                <div class="row chart-row ml-0" id="dendrograms-row">
+                <div class="row chart-row ms-0" id="dendrograms-row">
                     <div class="col-9 tree-container px-0" id="dendrograms"></div>
                 </div>
             </div>
@@ -164,7 +182,7 @@ TEMPLATE = """<!DOCTYPE html>
                 <div class="text-muted small">Sequence selection is based on plot zoom level</div>
             </div>
             <div class="col-6 d-flex py-2 align-items-center justify-content-end">
-                <div class="form-check form-check-inline mr-0">
+                <div class="form-check form-check-inline me-0">
                     <input class="form-check-input" type="checkbox" value="" id="remove-gaps">
                     <label class="form-check-label" for="remove-gaps" title="Remove gaps (-) from sequence exports"
                         data-toggle="tooltip">
@@ -534,7 +552,7 @@ TEMPLATE = """<!DOCTYPE html>
             height: 550,
             xaxis: { title: "Position", autorange: true, showgrid: false, showlines: false, zeroline: false, rangeslider: {} },
             yaxis: { title: "", fixedrange: true, showgrid: false, showspikes: false, domain: [0.65, 1], automargin: true },
-            yaxis2: { title: "ANI", fixedrange: true, range: [0, 1], showgrid: true, showticklabels: true, tickmode: 'array', tick0: 0, dtick: 0.2, zeroline: true, domain: [0, 0.60] },
+            yaxis2: { title: "ANI", showgrid: true, showticklabels: true, tickmode: 'array', tickvals: [0, 0.2, 0.4, 0.6, 0.8, 1], zeroline: true, domain: [0, 0.60] },
             yaxis3: {},
             yaxis4: {},
             hovermode: "closest",
@@ -651,12 +669,100 @@ TEMPLATE = """<!DOCTYPE html>
         }
     }
 
+    const get_gapped_sequence = (start, end, known_gaps = 0) => {
+        let seq = data.reference.seq.slice(start, end + known_gaps)
+        // count the selected number of gaps
+        let gaps = [...seq].filter(l => l === '-').length
+        // restart if we added new gaps
+        if (gaps > known_gaps) {
+            return get_gapped_sequence(start, end, known_gaps = gaps)
+        }
+        return [seq, gaps]
+    }
+
+    const get_annotation_trace = (traces) => {
+        if (!(data.gff)) {
+            return []
+        }
+
+        let offset = 1.1
+        let start = 0
+        let end = 0
+        let gaps = 0
+        let x = []
+        let y = []
+        let text = []
+
+        select = document.getElementById("annotation-type")
+        regions = data.gff[select.value]
+
+        for (let i = 0; i < regions.length; i++) {
+
+            // account for any gaps introduced prior to the first region
+            if (i == 0) {
+                let s = get_gapped_sequence(0, regions[i][0])
+                gaps += s[1]
+            }
+
+            region = regions[i]
+            let t = region[2].replaceAll(";", "<br>")
+            offset = i % 2 == 0 ? 1.1 : 1.05
+
+            // add existing gaps
+            start = region[0] + gaps
+            end = region[1] + gaps
+
+            // grab the gapped reference sequence for this region
+            let seqdata = get_gapped_sequence(start, end)
+            let seq = seqdata[0]
+            let g = seqdata[1]
+            // update gaps tracker
+            gaps += g
+
+            // add current gaps
+            end += g
+
+            x.push(start)
+            y.push(offset)
+            text.push(t)
+            x.push(end)
+            y.push(offset)
+            text.push(t)
+            x.push("")
+            y.push("")
+            text.push("")
+        }
+        traces.push({
+            x: x,
+            y: y,
+            text: text,
+            xaxis: "x",
+            yaxis: "y2",
+            type: "scattergl",
+            name: "annotation",
+            connectgaps: false,
+            showlegend: false,
+            line: { width: 2, color: "black" },
+            mode: "lines+markers",
+            hoverinfo: "text+x+name",
+            hoverlabel: { namelength: -1 },
+            marker: {
+                size: 6,
+                symbol: "square",
+                color: "black",
+                line: { width: 1, color: "white" },
+            },
+        })
+        return traces
+    }
+
     const build_grid_plots = () => {
         let ani_traces = get_ani_traces(data.queries, data.window)
         let msa_trace = get_msa_traces(data.queries, data.reference)
         let gard_trace = get_gard_trace()
+        let annotation_trace = get_annotation_trace(ani_traces)
         // global var
-        grid_traces = [msa_trace, gard_trace, ...ani_traces]
+        grid_traces = [msa_trace, gard_trace, annotation_trace, ...ani_traces]
 
         // let layout = plot_layout()
         let grid_plot = document.getElementById("grid-plot")
@@ -952,10 +1058,8 @@ TEMPLATE = """<!DOCTYPE html>
             <label for="\${data.reference.name}-seq">\${data.reference.name} (Reference)</label>
             <div class="input-group input-group-sm pb-2">
                 <input class="form-control text-monospace" type="text" placeholder="\${get_seq_by_id(data.reference.name)}" id="\${data.reference.name}-seq" readonly="">
-                <div class="input-group-append">
-                    <button class="btn btn-primary" type="button" id="\${data.reference.name}-copy-btn" title="Copy selected region" data-toggle="tooltip" onclick="copy('\${data.reference.name}')">Copy</button>
-                    <button class="btn btn-primary blast-btn" type="button" id="\${data.reference.name}-blast-btn" title="Send selected region to BLAST" data-toggle="tooltip" onclick="blast('\${data.reference.name}')">BLAST</button>
-                </div>
+                <button class="btn btn-primary" type="button" id="\${data.reference.name}-copy-btn" title="Copy selected region" data-toggle="tooltip" onclick="copy('\${data.reference.name}')">Copy</button>
+                <button class="btn btn-primary blast-btn" type="button" id="\${data.reference.name}-blast-btn" title="Send selected region to BLAST" data-toggle="tooltip" onclick="blast('\${data.reference.name}')">BLAST</button>
             </div>
             `
         )
@@ -964,10 +1068,8 @@ TEMPLATE = """<!DOCTYPE html>
                 <label for="\${query}-seq"><span class="plot-color" style="color:\${strain_colors(query)}">|</span> \${query}</label>
                 <div class="input-group input-group-sm pb-2">
                     <input class="form-control text-monospace" type="text" placeholder="\${get_seq_by_id(query)}" id="\${query}-seq" readonly="">
-                    <div class="input-group-append">
-                        <button class="btn btn-primary" type="button" id="\${query}-copy-btn" title="Copy selected region" data-toggle="tooltip" onclick="copy('\${query}')">Copy</button>
-                        <button class="btn btn-primary blast-btn" type="button" id="\${query}-blast-btn" title="Send selected region to BLAST" data-toggle="tooltip" onclick="blast('\${query}')">BLAST</button>
-                    </div>
+                    <button class="btn btn-primary" type="button" id="\${query}-copy-btn" title="Copy selected region" data-toggle="tooltip" onclick="copy('\${query}')">Copy</button>
+                    <button class="btn btn-primary blast-btn" type="button" id="\${query}-blast-btn" title="Send selected region to BLAST" data-toggle="tooltip" onclick="blast('\${query}')">BLAST</button>
                 </div>
                 `
             )
@@ -1044,17 +1146,33 @@ TEMPLATE = """<!DOCTYPE html>
         draw_sequences()
     })
 
+    jQuery("#annotation-type").on("change", () => {
+        build_grid_plots()
+    })
+
     jQuery(document).ready(function () {
         if (data.gard) {
             document.getElementById("iteration-number").innerHTML = Object.keys(data.gard.improvements).length - 1
             selected_trees = get_trees(Object.keys(data.gard.improvements).length - 1)
+        }
+        if (data.gff) {
+            // show the select
+            document.getElementById("annotation-select").classList.remove("d-none")
+            let select = document.getElementById("annotation-type")
+            // populate the select
+            for (const atype of Object.keys(data.gff)) {
+                let opt = document.createElement("option")
+                opt.value = atype
+                opt.innerHTML = atype
+                select.appendChild(opt)
+            }
         }
         update_details(data.reference.name, data.reference.seq.length, data.meta.cli, data.meta.dir, data.meta.container)
         build_grid_plots().then(() => {
             if (data.gard) {
                 build_dendrograms().then(() => {
                     build_gard_plot().then(() => {
-                        handle_dendrogram_click(0, data.gard.improvements[Object.keys(data.gard.improvements).length - 1].breakpoints[0][0], scroll=false)
+                        handle_dendrogram_click(0, data.gard.improvements[Object.keys(data.gard.improvements).length - 1].breakpoints[0][0], scroll = false)
                     })
                 })
             }
@@ -1080,6 +1198,13 @@ nuc_map = {
     "T": 3,
     "-": 4,
 }
+
+
+def gzopen(f):
+    if f.endswith(".gz"):
+        return gzip.open(f, "rt")
+    else:
+        return open(f)
 
 
 def read_fasta(fh):
@@ -1187,9 +1312,27 @@ def parse_trees(filepaths):
     return t
 
 
+def parse_gff(filepath):
+    if not filepath:
+        return False
+    gff_data = defaultdict(list)
+    with gzopen(filepath) as fh:
+        for line in fh:
+            if line.startswith("#"):
+                continue
+
+            toks = line.strip().split("\\t")
+            # make sure we ignore fasta lines when present
+            if len(toks) < 9:
+                continue
+            gff_data[toks[2]].append([int(toks[3]), int(toks[4]), toks[8]])
+    return gff_data
+
+
 alignments = "$msa"
 json_input = "$json" if "$json" != "input.2" else False
 trees = "$trees" if "$trees" != "input.3" else False
+gff = "$gff" if "$gff" != "input.4" else False
 window = $params.window
 output = "idplot.html"
 nextflow_command = "$workflow.commandLine"
@@ -1200,11 +1343,13 @@ reference, queries = parse_alignments(alignments)
 queries = process_queries(reference["seq"], queries)
 gard_results = parse_gard(json_input)
 tree_results = parse_trees(trees)
+gff_results = parse_gff(gff)
 data = {
         "reference": reference,
         "queries": queries,
         "gard": gard_results,
         "trees": tree_results,
+        "gff": gff_results,
         "window": window,
         "meta": {
             "cli": nextflow_command,

@@ -24,6 +24,10 @@ if (params.help) {
                  Default: 500
     --gard       Run GARD for breakpoint detection in addition to 3seq.
                  Default: false
+    --gff        Reference annotation file in .gff or .gff3 format.
+                 Coordinates will be adjusted to include gaps introduced
+                 during sequence alignment.
+                 Default: false
     --cpus       Threads for multi-threaded processes.
                  Default: 1
     -----------------------------------------------------------------------
@@ -38,6 +42,7 @@ if( !reference.exists() ) { exit 1, "Reference [${reference}] does not exist." }
 params.fasta = false
 if( !params.fasta ) { exit 1, "--fasta is not defined" }
 
+gff = params.gff ? file(params.gff) : false
 
 Channel
     .fromPath(params.fasta, checkIfExists: true)
@@ -49,11 +54,11 @@ process mafft {
     cpus params.cpus.toInteger()
 
     input:
-    file(reference)
-    file(query) from mafft_ch.collect()
+    path(reference)
+    path(query) from mafft_ch.collect()
 
     output:
-    file("${reference.baseName}.msa.fasta") into (msa_gard_ch, msa_json_ch, msa_report_ch)
+    path("${reference.baseName}.msa.fasta") into (msa_gard_ch, msa_json_ch, msa_report_ch)
 
     script:
     """
@@ -70,10 +75,10 @@ process gard {
     cpus params.cpus.toInteger()
 
     input:
-    file(msa) from msa_gard_ch
+    path(msa) from msa_gard_ch
 
     output:
-    file("${msa.baseName}.json") into (gard_output_ch, gard_output_secondary_ch)
+    path("${msa.baseName}.json") into (gard_output_ch, gard_output_secondary_ch)
 
     when:
     params.gard
@@ -92,11 +97,11 @@ gard_report_ch = (params.gard ? gard_output_secondary_ch : [""])
 
 process jsontofasta {
     input:
-    file(msa) from msa_json_ch
+    path(msa) from msa_json_ch
     file(json) from gard_json_ch
 
     output:
-    file("*.fa") into selection_ch
+    path("*.fa") into selection_ch
 
     when:
     params.gard
@@ -108,10 +113,10 @@ process jsontofasta {
 
 process fasttree {
     input:
-    file(fasta) from selection_ch.flatten()
+    path(fasta) from selection_ch.flatten()
 
     output:
-    file("${fasta.simpleName}.tree") into tree_output_ch
+    path("${fasta.simpleName}.tree") into tree_output_ch
 
     script:
     """
@@ -125,12 +130,13 @@ process idplot {
     publishDir path: "${params.outdir}/", mode: "copy"
 
     input:
-    file(msa) from msa_report_ch
+    path(msa) from msa_report_ch
     file(json) from gard_report_ch
     file(trees) from tree_report_ch.collect()
+    path(gff)
 
     output:
-    file("idplot.html")
+    path("idplot.html")
 
     script:
     template "idplot.py"
