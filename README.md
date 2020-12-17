@@ -75,6 +75,8 @@ Within the report, this renders as:
 
 ![gff](data/img/gff.png)
 
+As GFFs may have multiple feature types, we allow the reader to select their preferred feature type from the report header.
+
 # Interpreting the report
 
 ## Multiple sequence alignment
