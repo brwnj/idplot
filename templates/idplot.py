@@ -1164,6 +1164,9 @@ TEMPLATE = """<!DOCTYPE html>
                 let opt = document.createElement("option")
                 opt.value = atype
                 opt.innerHTML = atype
+                if (atype == "gene") {
+                    opt.selected = true
+                }
                 select.appendChild(opt)
             }
         }
