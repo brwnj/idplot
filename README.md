@@ -77,6 +77,10 @@ Within the report, this renders as:
 
 As GFFs may have multiple feature types, we allow the reader to select their preferred feature type from the report header.
 
+Coordinates in the original GFF will likely not match what is being displayed. Start and end
+coordinates are updated based on gaps introduced into the reference sequence during multiple
+sequence alignment.
+
 # Interpreting the report
 
 ## Multiple sequence alignment
