@@ -366,7 +366,7 @@ TEMPLATE = """<!DOCTYPE html>
             var diagonal = options.diagonal || d3.phylogram.rightAngleDiagonal();
             var vis = options.vis || d3.select(selector).append("svg:svg")
                 .attr("width", w + 100)
-                .attr("height", h + 10)
+                .attr("height", h + 16)
                 //.attr("width", w + 300)
                 //.attr("height", h + 30)
                 .append("svg:g")
@@ -1204,6 +1204,8 @@ nuc_map = {
     "G": 2,
     "T": 3,
     "-": 4,
+    "N": 4,
+    "n": 4,
 }
 
 
