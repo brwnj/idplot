@@ -1221,7 +1221,7 @@ def read_fasta(fh):
             name = line[1:].strip()
         else:
             seq = "".join(line.strip() for line in group)
-            yield name, seq
+            yield name, seq.replace("u", "t").replace("U", "T")
 
 
 def parse_alignments(fasta):
@@ -1271,9 +1271,6 @@ def process_queries(refseq, query_seqs):
         # mismatches, msa of the query
         for rbase, qbase in zip(refseq, query["seq"]):
             if rbase == qbase:
-                mismatches.append(0)
-                query_msa.append("")
-            elif (rbase.lower() == "u" and qbase.lower() == "t") or (rbase.lower() == "t" and qbase.lower() == "u"):
                 mismatches.append(0)
                 query_msa.append("")
             else:
