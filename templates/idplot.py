@@ -1273,6 +1273,9 @@ def process_queries(refseq, query_seqs):
             if rbase == qbase:
                 mismatches.append(0)
                 query_msa.append("")
+            elif (rbase.lower() == "u" and qbase.lower() == "t") or (rbase.lower() == "t" and qbase.lower() == "u"):
+                mismatches.append(0)
+                query_msa.append("")
             else:
                 mismatches.append(1)
                 try:
