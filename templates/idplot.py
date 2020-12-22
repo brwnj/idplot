@@ -1159,7 +1159,7 @@ TEMPLATE = """<!DOCTYPE html>
             document.getElementById("iteration-number").innerHTML = Object.keys(data.gard.improvements).length - 1
             selected_trees = get_trees(Object.keys(data.gard.improvements).length - 1)
         }
-        if (data.gff) {
+        if (data.gff && Object.keys(data.gff).length > 0) {
             // show the select
             document.getElementById("annotation-select").classList.remove("d-none")
             let select = document.getElementById("annotation-type")
