@@ -549,7 +549,7 @@ TEMPLATE = """<!DOCTYPE html>
         let layout = {
             title: "",
             margin: { t: 10, b: 40, r: 40 },
-            height: 550,
+            height: 550 + (Object.keys(data.queries).length * 10),
             xaxis: { title: "Position", autorange: true, showgrid: false, showlines: false, zeroline: false, rangeslider: {} },
             yaxis: { title: "", fixedrange: true, showgrid: false, showspikes: false, domain: [0.65, 1], automargin: true },
             yaxis2: { title: "ANI", showgrid: true, showticklabels: true, tickmode: 'array', tickvals: [0, 0.2, 0.4, 0.6, 0.8, 1], zeroline: true, domain: [0, 0.60] },
