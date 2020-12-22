@@ -685,6 +685,10 @@ TEMPLATE = """<!DOCTYPE html>
             return []
         }
 
+        if (Object.keys(data.gff).length == 0) {
+            return []
+        }
+
         let offset = 1.1
         let start = 0
         let end = 0
