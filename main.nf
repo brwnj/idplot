@@ -133,7 +133,7 @@ process idplot {
     path(msa) from msa_report_ch
     file(json) from gard_report_ch
     file(trees) from tree_report_ch.collect()
-    path(gff)
+    file(gff)
 
     output:
     path("idplot.html")
