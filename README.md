@@ -53,6 +53,9 @@ nextflow run brwnj/idplot -latest -with-docker \
     --alignment my_alignment_msa.fasta
 ```
 
+The first sequence in the file will be used as the reference (root)
+sequence.
+
 Options `--reference` and `--fasta` are both omitted in this case.
 
 ## Including breakpoint detection
