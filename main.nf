@@ -11,9 +11,13 @@ if (params.help) {
 
     required
     --------
-    --reference  Fasta sequence that will act as the root sequence
+    --reference  Fasta sequence that will act as the root sequence.
     --fasta      One ('my.fasta') or multiple ('*.fasta') query sequences
                  to compare to `--reference`.
+
+    OR
+
+    --alignment  Pre-aligned sequences where the first sequence is your root.
 
     options
     -------
@@ -22,7 +26,7 @@ if (params.help) {
     --window     The sliding window size across the reference genome upon
                  which to calculate similarity.
                  Default: 500
-    --gard       Run GARD for breakpoint detection in addition to 3seq.
+    --gard       Run GARD for breakpoint detection.
                  Default: false
     --gff        Reference annotation file in .gff or .gff3 format.
                  Coordinates will be adjusted to include gaps introduced
@@ -36,18 +40,25 @@ if (params.help) {
 }
 // required arguments
 params.reference = false
-if( !params.reference ) { exit 1, "--reference is not defined" }
-reference = file(params.reference)
-if( !reference.exists() ) { exit 1, "Reference [${reference}] does not exist." }
 params.fasta = false
-if( !params.fasta ) { exit 1, "--fasta is not defined" }
+params.alignment = false
+if( params.alignment ) {
+    Channel
+        .fromPath(params.alignment, checkIfExists: true)
+        .into { alignment_gard_ch; alignment_json_ch; alignment_report_ch }
+    mafft_ch = Channel.empty()
+    reference = false
+} else {
+    if( !params.reference ) { exit 1, "Neither --reference NOR --alignment are defined" }
+    reference = file(params.reference)
+    if( !reference.exists() ) { exit 1, "Reference [${reference}] does not exist." }
+    if( !params.fasta ) { exit 1, "--fasta is not defined" }
+    Channel
+        .fromPath(params.fasta, checkIfExists: true)
+        .set { mafft_ch }
+}
 
 gff = params.gff ? file(params.gff) : false
-
-Channel
-    .fromPath(params.fasta, checkIfExists: true)
-    .set { mafft_ch }
-
 
 process mafft {
     publishDir path: "${params.outdir}/", mode: "copy"
@@ -60,6 +71,9 @@ process mafft {
     output:
     path("${reference.baseName}.msa.fasta") into (msa_gard_ch, msa_json_ch, msa_report_ch)
 
+    when:
+    params.reference
+
     script:
     """
     cat ${reference} > mafft_input.fasta
@@ -68,6 +82,9 @@ process mafft {
     """
 }
 
+msa_gard_input_ch = (params.reference ? msa_gard_ch : alignment_gard_ch)
+msa_json_input_ch = (params.reference ? msa_json_ch : alignment_json_ch)
+msa_report_input_ch = (params.reference ? msa_report_ch : alignment_report_ch)
 
 process gard {
     publishDir path: "${params.outdir}/gard/", mode: "copy"
@@ -75,7 +92,7 @@ process gard {
     cpus params.cpus.toInteger()
 
     input:
-    path(msa) from msa_gard_ch
+    path(msa) from msa_gard_input_ch
 
     output:
     path("${msa.baseName}.json") into (gard_output_ch, gard_output_secondary_ch)
@@ -97,7 +114,7 @@ gard_report_ch = (params.gard ? gard_output_secondary_ch : [""])
 
 process jsontofasta {
     input:
-    path(msa) from msa_json_ch
+    path(msa) from msa_json_input_ch
     file(json) from gard_json_ch
 
     output:
@@ -130,7 +147,7 @@ process idplot {
     publishDir path: "${params.outdir}/", mode: "copy"
 
     input:
-    path(msa) from msa_report_ch
+    path(msa) from msa_report_input_ch
     file(json) from gard_report_ch
     file(trees) from tree_report_ch.collect()
     file(gff)

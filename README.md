@@ -42,6 +42,19 @@ be opened with an internet browser.
 
 An example report is available at: https://brwnj.github.io/idplot/
 
+## Using a custom alignment
+
+In some cases it may be necessary to manually correct an alignment. In
+this case, `idplot` can accept the alignment and skip its internal
+alignment step. To do so, run:
+
+```
+nextflow run brwnj/idplot -latest -with-docker \
+    --alignment my_alignment_msa.fasta
+```
+
+Options `--reference` and `--fasta` are both omitted in this case.
+
 ## Including breakpoint detection
 
 We have opted to employ GARD via [HyPhy](https://github.com/veg/hyphy) to
