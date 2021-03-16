@@ -546,13 +546,18 @@ TEMPLATE = """<!DOCTYPE html>
     }
 
     const plot_layout = () => {
+        let y_range = 1.12
+        if (!(data.gff) || Object.keys(data.gff).length == 0) {
+            y_range = 1
+        }
+
         let layout = {
             title: "",
             margin: { t: 10, b: 40, r: 40 },
             height: 550 + (Object.keys(data.queries).length * 10),
             xaxis: { title: "Position", autorange: true, showgrid: false, showlines: false, zeroline: false, rangeslider: {} },
             yaxis: { title: "", fixedrange: true, showgrid: false, showspikes: false, domain: [0.65, 1], automargin: true },
-            yaxis2: { title: "ANI", showgrid: true, showticklabels: true, tickmode: 'array', tickvals: [0, 0.2, 0.4, 0.6, 0.8, 1], range: [0,1], autorange: false, zeroline: true, domain: [0, 0.60] },
+            yaxis2: { title: "ANI", showgrid: true, showticklabels: true, tickmode: 'array', tickvals: [0, 0.2, 0.4, 0.6, 0.8, 1], range: [0, y_range], autorange: false, zeroline: true, domain: [0, 0.60] },
             yaxis3: {},
             yaxis4: {},
             hovermode: "closest",
@@ -699,6 +704,14 @@ TEMPLATE = """<!DOCTYPE html>
 
         select = document.getElementById("annotation-type")
         regions = data.gff[select.value]
+
+        // can't assume regions are ordered
+        // sort by starts
+        regions.sort( function( a, b ) {
+            // Sort by the 2nd value in each array
+            if ( a[1] == b[1] ) return 0;
+            return a[1] < b[1] ? -1 : 1;
+        });
 
         for (let i = 0; i < regions.length; i++) {
 
