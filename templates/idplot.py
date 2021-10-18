@@ -1242,7 +1242,7 @@ def read_fasta(fh):
 def parse_alignments(fasta):
     reference = False
     queries = []
-    with open(alignments) as fh:
+    with open(fasta) as fh:
         for (name, seq) in read_fasta(fh):
             if reference:
                 queries.append(dict(name=name, seq=seq))
