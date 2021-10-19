@@ -1278,7 +1278,7 @@ def sliding_window(iterable, size=2, step=1, fillvalue=None):
         q.extend(next(it, fillvalue) for _ in range(step - 1))
 
 
-def process_queries(refseq, query_seqs):
+def process_queries(refseq, query_seqs, window):
     query_vals = dict()
     for query in query_seqs:
         mismatches = list()
@@ -1362,7 +1362,7 @@ launch_directory = "$workflow.launchDir"
 workflow_container = "$workflow.container"
 
 reference, queries = parse_alignments(alignments)
-queries = process_queries(reference["seq"], queries)
+queries = process_queries(reference["seq"], queries, window)
 gard_results = parse_gard(json_input)
 tree_results = parse_trees(trees)
 gff_results = parse_gff(gff)
